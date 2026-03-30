@@ -126,13 +126,14 @@ install_gtk_theme() {
 #   3843 – just-perfection      (panel layout tweaks)
 #   4412 – advanced-alt-tab     (window switcher)
 #   1007 – window-is-ready-notification-remover
+#   7048 – rounded-window-corners-reborn
 install_extensions() {
   info "Installing gnome-extensions-cli via uv..."
   uv tool install gnome-extensions-cli --force
   export PATH="$HOME/.local/bin:$PATH"
 
   info "Installing recommended GNOME Shell extensions..."
-  gext install 19 307 3193 3843 4412 1007
+  gext install 19 307 3193 3843 4412 1007 7048
 
   # gext doesn't run glib-compile-schemas; do it for every installed extension
   # that ships a schemas/ directory (blur-my-shell needs this).
@@ -146,7 +147,8 @@ install_extensions() {
     "dash-to-dock@micxgx.gmail.com" \
     "blur-my-shell@aunetx" \
     "just-perfection-desktop@just-perfection" \
-    "advanced-alt-tab@G-dH.github.com"; do
+    "advanced-alt-tab@G-dH.github.com" \
+    "rounded-window-corners@fxgn"; do
     gnome-extensions enable "$ext_uuid" 2>/dev/null && info "Enabled $ext_uuid" || true
   done
 
