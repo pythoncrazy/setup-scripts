@@ -182,10 +182,13 @@ configure_panel() {
 
   # --- Items NOT present in the macOS menu bar ---
   jp panel-notification-icon false  # no notification dot in macOS menu bar
-  jp power-icon              false  # no standalone power button
+  jp power-icon              true   # show battery icon
   jp window-picker-icon      false  # no window-picker icon
   jp show-apps-button        false  # no app-grid button
   jp accessibility-menu      false  # hidden by default on macOS
+
+  # Show battery percentage as text next to the icon
+  gsettings set org.gnome.desktop.interface show-battery-percentage true
 
   success "Panel configured."
 }
