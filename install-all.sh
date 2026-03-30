@@ -22,9 +22,17 @@ die()     { echo -e "${RED}${BLD}[ERR]${RST}  $*" >&2; exit 1; }
 # ─── 0a. ZSH + OH-MY-ZSH ──────────────────────────────────────────────────────
 install_zsh() {
   if ! command -v zsh &>/dev/null; then
-    die "zsh is not installed. Install it first (e.g. sudo pacman -S zsh) then re-run."
+    info "zsh not found, installing..."
+    sudo pacman -S --noconfirm zsh
   fi
   info "zsh found at $(command -v zsh)."
+
+  # Switch the login shell to zsh
+  if [[ "$SHELL" != "$(command -v zsh)" ]]; then
+    info "Changing login shell to zsh..."
+    chsh -s "$(command -v zsh)"
+    success "Login shell changed to zsh."
+  fi
 
   if [[ -d "$HOME/.oh-my-zsh" ]]; then
     info "oh-my-zsh already installed, skipping."
@@ -36,7 +44,29 @@ install_zsh() {
   success "oh-my-zsh installed."
 }
 
-# ─── 0b. PIXI ─────────────────────────────────────────────────────────────────
+# ─── 0b. STARSHIP ─────────────────────────────────────────────────────────────
+install_starship() {
+  if command -v starship &>/dev/null; then
+    info "starship already installed, skipping."
+    return
+  fi
+  info "Installing starship..."
+  curl -sS https://starship.rs/install.sh | sh -s -- --yes
+  success "starship installed."
+}
+
+# ─── 0c. ATUIN ────────────────────────────────────────────────────────────────
+install_atuin() {
+  if command -v atuin &>/dev/null; then
+    info "atuin already installed, skipping."
+    return
+  fi
+  info "Installing atuin..."
+  curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh | sh
+  success "atuin installed."
+}
+
+# ─── 0d. PIXI ─────────────────────────────────────────────────────────────────
 install_pixi() {
   if ! command -v pixi &>/dev/null; then
     info "Installing pixi..."
@@ -53,7 +83,7 @@ install_pixi() {
   success "pixi tools installed."
 }
 
-# ─── 0c. UV ────────────────────────────────────────────────────────────────────
+# ─── 0e. UV ────────────────────────────────────────────────────────────────────
 install_uv() {
   if command -v uv &>/dev/null; then
     info "uv already installed, skipping."
@@ -199,6 +229,10 @@ echo -e "${BLD}WhiteSur Full Installer${RST}"
 echo "────────────────────────────────────────"
 
 install_zsh
+echo
+install_starship
+echo
+install_atuin
 echo
 install_pixi
 echo
