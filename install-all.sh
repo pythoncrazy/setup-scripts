@@ -19,6 +19,19 @@ success() { echo -e "${GRN}${BLD}[OK]${RST}   $*"; }
 warn()    { echo -e "${YLW}${BLD}[WARN]${RST} $*"; }
 die()     { echo -e "${RED}${BLD}[ERR]${RST}  $*" >&2; exit 1; }
 
+# ─── 0. UV ────────────────────────────────────────────────────────────────────
+install_uv() {
+  if command -v uv &>/dev/null; then
+    info "uv already installed, skipping."
+    return
+  fi
+  info "Installing uv..."
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  # Make uv available in the current session
+  export PATH="$HOME/.local/bin:$PATH"
+  success "uv installed."
+}
+
 # ─── 1. GTK THEME ─────────────────────────────────────────────────────────────
 install_gtk_theme() {
   info "Installing WhiteSur GTK theme (dark, blue, darker)..."
@@ -38,45 +51,13 @@ install_gtk_theme() {
 #   307  – dash-to-dock
 #   3193 – blur-my-shell
 install_extensions() {
+  info "Installing gnome-extensions-cli via uv..."
+  uv tool install gnome-extensions-cli --force
+  export PATH="$HOME/.local/bin:$PATH"
+
   info "Installing recommended GNOME Shell extensions..."
+  gext install 19 307 3193
 
-  # Try gext (python-gnome-extensions-cli) first, then fall back to
-  # gnome-shell-extension-installer, then warn the user.
-  if command -v gext &>/dev/null; then
-    info "Using gext..."
-    gext install user-themes@gnome-shell-extensions.gcampax.github.com   || warn "user-themes install failed"
-    gext install dash-to-dock@micxgx.gmail.com                           || warn "dash-to-dock install failed"
-    gext install blur-my-shell@aunetx                                     || warn "blur-my-shell install failed"
-
-  elif command -v gnome-shell-extension-installer &>/dev/null; then
-    info "Using gnome-shell-extension-installer..."
-    gnome-shell-extension-installer 19   --yes || warn "user-themes install failed"
-    gnome-shell-extension-installer 307  --yes || warn "dash-to-dock install failed"
-    gnome-shell-extension-installer 3193 --yes || warn "blur-my-shell install failed"
-
-  else
-    # Download the installer script on the fly
-    warn "Neither gext nor gnome-shell-extension-installer found."
-    info "Attempting to download gnome-shell-extension-installer..."
-    local installer_tmp
-    installer_tmp="$(mktemp)"
-    if curl -fsSL \
-        "https://raw.githubusercontent.com/brunelli/gnome-shell-extension-installer/master/gnome-shell-extension-installer" \
-        -o "$installer_tmp"; then
-      chmod +x "$installer_tmp"
-      "$installer_tmp" 19   --yes || warn "user-themes install failed"
-      "$installer_tmp" 307  --yes || warn "dash-to-dock install failed"
-      "$installer_tmp" 3193 --yes || warn "blur-my-shell install failed"
-      rm -f "$installer_tmp"
-    else
-      warn "Could not download installer. Install extensions manually:"
-      warn "  user-themes  → https://extensions.gnome.org/extension/19/"
-      warn "  dash-to-dock → https://extensions.gnome.org/extension/307/"
-      warn "  blur-my-shell→ https://extensions.gnome.org/extension/3193/"
-    fi
-  fi
-
-  # Enable the extensions (non-fatal if the shell isn't running / is Wayland)
   for ext_uuid in \
     "user-themes@gnome-shell-extensions.gcampax.github.com" \
     "dash-to-dock@micxgx.gmail.com" \
@@ -123,6 +104,8 @@ echo
 echo -e "${BLD}WhiteSur Full Installer${RST}"
 echo "────────────────────────────────────────"
 
+install_uv
+echo
 install_gtk_theme
 echo
 install_extensions
