@@ -52,6 +52,15 @@ install_starship() {
   fi
   info "Installing starship..."
   curl -sS https://starship.rs/install.sh | sh -s -- --yes
+
+  # Wire starship into both shells
+  for rc in "$HOME/.zshrc" "$HOME/.bashrc"; do
+    if [[ -f "$rc" ]] && ! grep -q 'starship init' "$rc"; then
+      echo '' >> "$rc"
+      echo 'eval "$(starship init '"$(basename "$rc" rc | tr -d '.')"')"' >> "$rc"
+    fi
+  done
+
   success "starship installed."
 }
 
