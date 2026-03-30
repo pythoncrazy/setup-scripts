@@ -41,6 +41,20 @@ install_zsh() {
   info "Installing oh-my-zsh..."
   # RUNZSH=no / CHSH=no: don't launch zsh or switch the login shell mid-script
   RUNZSH=no CHSH=no sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+
+  local plugins_dir="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins"
+
+  # zsh-autosuggestions
+  if [[ ! -d "$plugins_dir/zsh-autosuggestions" ]]; then
+    info "Installing zsh-autosuggestions..."
+    git clone https://github.com/zsh-users/zsh-autosuggestions "$plugins_dir/zsh-autosuggestions"
+  fi
+
+  # Enable plugin in .zshrc
+  if [[ -f "$HOME/.zshrc" ]] && ! grep -q 'zsh-autosuggestions' "$HOME/.zshrc"; then
+    sed -i 's/^plugins=(\(.*\))/plugins=(\1 zsh-autosuggestions)/' "$HOME/.zshrc"
+  fi
+
   success "oh-my-zsh installed."
 }
 
