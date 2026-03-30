@@ -46,17 +46,18 @@ install_gtk_theme() {
 }
 
 # ─── 2. GNOME SHELL EXTENSIONS ────────────────────────────────────────────────
-# Extension IDs from the README:
-#   19   – user-themes   (required to apply shell themes)
+# Extension IDs:
+#   19   – user-themes          (required to apply shell themes)
 #   307  – dash-to-dock
 #   3193 – blur-my-shell
+#   3843 – just-perfection      (panel layout tweaks)
 install_extensions() {
   info "Installing gnome-extensions-cli via uv..."
   uv tool install gnome-extensions-cli --force
   export PATH="$HOME/.local/bin:$PATH"
 
   info "Installing recommended GNOME Shell extensions..."
-  gext install 19 307 3193
+  gext install 19 307 3193 3843
 
   # gext doesn't run glib-compile-schemas; do it for every installed extension
   # that ships a schemas/ directory (blur-my-shell needs this).
@@ -68,11 +69,60 @@ install_extensions() {
   for ext_uuid in \
     "user-themes@gnome-shell-extensions.gcampax.github.com" \
     "dash-to-dock@micxgx.gmail.com" \
-    "blur-my-shell@aunetx"; do
+    "blur-my-shell@aunetx" \
+    "just-perfection-desktop@just-perfection"; do
     gnome-extensions enable "$ext_uuid" 2>/dev/null && info "Enabled $ext_uuid" || true
   done
 
   success "GNOME Shell extensions done."
+}
+
+# ─── 3. PANEL LAYOUT (macOS-like) ─────────────────────────────────────────────
+configure_panel() {
+  info "Configuring panel to match macOS layout via Just Perfection..."
+  local schema="org.gnome.shell.extensions.just-perfection"
+  local schema_dir="$HOME/.local/share/gnome-shell/extensions/just-perfection-desktop@just-perfection/schemas"
+
+  # Just Perfection schemas live in the extension dir, not the system path.
+  jp() { GSETTINGS_SCHEMA_DIR="$schema_dir" gsettings set "$schema" "$@"; }
+
+  # --- Items that belong in the macOS menu bar ---
+  jp activities-button      true   # Apple logo (set via WhiteSur --shell -i apple)
+  jp clock-menu             true   # Date & time
+  jp quick-settings         true   # Control Center equivalent
+  jp keyboard-layout        true   # Input source (shown on macOS when multiple)
+
+  # Clock goes on the RIGHT  (macOS: Apple logo left → clock/status far right)
+  # 0=center  1=right  2=left
+  jp clock-menu-position    1
+
+  # Boot to desktop, not the GNOME overview  (macOS behaviour)
+  # 0=desktop  1=overview
+  jp startup-status         0
+
+  # --- Items NOT present in the macOS menu bar ---
+  jp panel-notification-icon false  # no notification dot in macOS menu bar
+  jp power-icon              false  # no standalone power button
+  jp window-picker-icon      false  # no window-picker icon
+  jp show-apps-button        false  # no app-grid button
+  jp accessibility-menu      false  # hidden by default on macOS
+
+  success "Panel configured."
+}
+
+# ─── 4. KEYBINDINGS ───────────────────────────────────────────────────────────
+configure_keybindings() {
+  info "Remapping Alt+Tab to switch windows (not apps)..."
+
+  # Disable the default app-switching Alt+Tab
+  gsettings set org.gnome.desktop.wm.keybindings switch-applications   "[]"
+  gsettings set org.gnome.desktop.wm.keybindings switch-applications-backward "[]"
+
+  # Bind Alt+Tab / Alt+Shift+Tab to switch individual windows
+  gsettings set org.gnome.desktop.wm.keybindings switch-windows        "['<Alt>Tab']"
+  gsettings set org.gnome.desktop.wm.keybindings switch-windows-backward "['<Shift><Alt>Tab']"
+
+  success "Keybindings configured."
 }
 
 # ─── 3. VENTURA WALLPAPERS ────────────────────────────────────────────────────
@@ -122,6 +172,10 @@ echo
 install_icons
 echo
 install_cursors
+echo
+configure_panel
+echo
+configure_keybindings
 echo
 
 echo -e "${GRN}${BLD}All done!${RST}"
