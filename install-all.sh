@@ -285,21 +285,25 @@ configure_gtk() {
     if ! grep -q 'context-menu padding' "$css" 2>/dev/null; then
       cat >> "$css" <<'EOF'
 
-/* tighter context menus — less macOS-like padding */
-.context-menu { padding: 4px 0; }
+/* tighter context menus */
+.context-menu { padding: 2px 0; }
 .context-menu menuitem,
 menuitem {
-  padding: 2px 8px;
-  min-height: 24px;
+  padding: 1px 6px;
+  min-height: 20px;
 }
 EOF
     fi
   done
 
   # Fix oversized Chrome context menus — Chrome may detect wrong scale on Wayland
-  if [[ ! -f "$HOME/.config/chrome-flags.conf" ]] || ! grep -q 'force-device-scale-factor' "$HOME/.config/chrome-flags.conf"; then
-    echo '--force-device-scale-factor=1' >> "$HOME/.config/chrome-flags.conf"
-  fi
+  # Chrome on HiDPI Wayland inflates its own UI — scale down to normal size.
+  # 0.8 counters the ~162 DPI auto-scaling. --disable-smooth-scrolling reduces
+  # perceived scroll speed until libinput-config kicks in after reboot.
+  cat > "$HOME/.config/chrome-flags.conf" <<'EOF'
+--force-device-scale-factor=0.8
+--disable-smooth-scrolling
+EOF
 
   success "GTK context menu padding reduced."
 }
