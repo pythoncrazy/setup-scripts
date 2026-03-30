@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # WhiteSur Full Install
-# Installs: GTK theme (dark, blue, darker), GNOME shell extensions,
-#           Ventura wallpapers, WhiteSur icons, and WhiteSur cursors.
+# Installs: zsh + oh-my-zsh, pixi + global tools, GTK theme (dark, blue, darker),
+#           GNOME shell extensions, Ventura wallpapers, WhiteSur icons and cursors.
 
 set -euo pipefail
 
@@ -19,7 +19,41 @@ success() { echo -e "${GRN}${BLD}[OK]${RST}   $*"; }
 warn()    { echo -e "${YLW}${BLD}[WARN]${RST} $*"; }
 die()     { echo -e "${RED}${BLD}[ERR]${RST}  $*" >&2; exit 1; }
 
-# ─── 0. UV ────────────────────────────────────────────────────────────────────
+# ─── 0a. ZSH + OH-MY-ZSH ──────────────────────────────────────────────────────
+install_zsh() {
+  if ! command -v zsh &>/dev/null; then
+    die "zsh is not installed. Install it first (e.g. sudo pacman -S zsh) then re-run."
+  fi
+  info "zsh found at $(command -v zsh)."
+
+  if [[ -d "$HOME/.oh-my-zsh" ]]; then
+    info "oh-my-zsh already installed, skipping."
+    return
+  fi
+  info "Installing oh-my-zsh..."
+  # RUNZSH=no / CHSH=no: don't launch zsh or switch the login shell mid-script
+  RUNZSH=no CHSH=no sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+  success "oh-my-zsh installed."
+}
+
+# ─── 0b. PIXI ─────────────────────────────────────────────────────────────────
+install_pixi() {
+  if ! command -v pixi &>/dev/null; then
+    info "Installing pixi..."
+    curl -fsSL https://pixi.sh/install.sh | sh
+    # Make pixi available in the current session
+    source "$HOME/.bashrc" 2>/dev/null || export PATH="$HOME/.pixi/bin:$PATH"
+  else
+    info "pixi already installed, skipping."
+    export PATH="$HOME/.pixi/bin:$PATH"
+  fi
+
+  info "Installing global pixi tools (zellij gh btop)..."
+  pixi global install zellij gh btop
+  success "pixi tools installed."
+}
+
+# ─── 0c. UV ────────────────────────────────────────────────────────────────────
 install_uv() {
   if command -v uv &>/dev/null; then
     info "uv already installed, skipping."
@@ -51,13 +85,15 @@ install_gtk_theme() {
 #   307  – dash-to-dock
 #   3193 – blur-my-shell
 #   3843 – just-perfection      (panel layout tweaks)
+#   4412 – advanced-alt-tab     (window switcher)
+#   1007 – window-is-ready-notification-remover
 install_extensions() {
   info "Installing gnome-extensions-cli via uv..."
   uv tool install gnome-extensions-cli --force
   export PATH="$HOME/.local/bin:$PATH"
 
   info "Installing recommended GNOME Shell extensions..."
-  gext install 19 307 3193 3843
+  gext install 19 307 3193 3843 4412 1007
 
   # gext doesn't run glib-compile-schemas; do it for every installed extension
   # that ships a schemas/ directory (blur-my-shell needs this).
@@ -70,7 +106,8 @@ install_extensions() {
     "user-themes@gnome-shell-extensions.gcampax.github.com" \
     "dash-to-dock@micxgx.gmail.com" \
     "blur-my-shell@aunetx" \
-    "just-perfection-desktop@just-perfection"; do
+    "just-perfection-desktop@just-perfection" \
+    "advanced-alt-tab@G-dH.github.com"; do
     gnome-extensions enable "$ext_uuid" 2>/dev/null && info "Enabled $ext_uuid" || true
   done
 
@@ -161,6 +198,10 @@ echo
 echo -e "${BLD}WhiteSur Full Installer${RST}"
 echo "────────────────────────────────────────"
 
+install_zsh
+echo
+install_pixi
+echo
 install_uv
 echo
 install_gtk_theme
