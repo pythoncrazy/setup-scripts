@@ -28,10 +28,17 @@ install_zsh() {
   info "zsh found at $(command -v zsh)."
 
   # Switch the login shell to zsh
-  if [[ "$SHELL" != "$(command -v zsh)" ]]; then
+  local zsh_path
+  zsh_path="$(command -v zsh)"
+  if [[ "$SHELL" != "$zsh_path" ]]; then
     info "Changing login shell to zsh..."
-    chsh -s "$(command -v zsh)"
-    success "Login shell changed to zsh."
+    if chsh -s "$zsh_path"; then
+      success "Login shell changed to zsh."
+    else
+      warn "chsh failed — you may need to run: chsh -s $zsh_path"
+    fi
+  else
+    info "Login shell is already zsh."
   fi
 
   if [[ -d "$HOME/.oh-my-zsh" ]]; then
@@ -94,8 +101,15 @@ install_pixi() {
   if ! command -v pixi &>/dev/null; then
     info "Installing pixi..."
     curl -fsSL https://pixi.sh/install.sh | sh
-    # Make pixi available in the current session
-    source "$HOME/.bashrc" 2>/dev/null || export PATH="$HOME/.pixi/bin:$PATH"
+    export PATH="$HOME/.pixi/bin:$PATH"
+
+    # Add pixi to shells
+    for rc in "$HOME/.zshrc" "$HOME/.bashrc"; do
+      if [[ -f "$rc" ]] && ! grep -q 'pixi/bin' "$rc"; then
+        echo '' >> "$rc"
+        echo 'export PATH="$HOME/.pixi/bin:$PATH"' >> "$rc"
+      fi
+    done
   else
     info "pixi already installed, skipping."
     export PATH="$HOME/.pixi/bin:$PATH"
@@ -213,6 +227,11 @@ configure_panel() {
   # Show battery percentage as text next to the icon
   gsettings set org.gnome.desktop.interface show-battery-percentage true
 
+  # Apply WhiteSur dark shell theme (makes OSD/panel use dark styling)
+  local user_theme_schemas="$HOME/.local/share/gnome-shell/extensions/user-theme@gnome-shell-extensions.gcampax.github.com/schemas"
+  GSETTINGS_SCHEMA_DIR="$user_theme_schemas" \
+    gsettings set org.gnome.shell.extensions.user-theme name "WhiteSur-Dark-blue"
+
   success "Panel configured."
 }
 
@@ -229,6 +248,55 @@ configure_keybindings() {
   gsettings set org.gnome.desktop.wm.keybindings switch-windows-backward "['<Shift><Alt>Tab']"
 
   success "Keybindings configured."
+}
+
+# ─── 5. SCROLL SPEED ──────────────────────────────────────────────────────────
+configure_scroll_speed() {
+  info "Configuring scroll speed via libinput-config..."
+
+  # Install build deps
+  sudo pacman -S --noconfirm meson libinput
+
+  local build_dir
+  build_dir="$(mktemp -d)"
+  git clone https://gitlab.com/warningnonpotablewater/libinput-config.git "$build_dir"
+  cd "$build_dir"
+  meson setup build
+  cd build
+  ninja
+  sudo ninja install
+
+  # Write config — values < 1.0 slow scrolling down
+  sudo tee /etc/libinput.conf > /dev/null <<'EOF'
+override-compositor=enabled
+scroll-factor=0.4
+EOF
+
+  rm -rf "$build_dir"
+  success "Scroll speed configured (factor 0.4 — reboot to apply)."
+}
+
+# ─── 6. GTK TWEAKS ────────────────────────────────────────────────────────────
+configure_gtk() {
+  info "Reducing context menu padding..."
+  mkdir -p "$HOME/.config/gtk-3.0" "$HOME/.config/gtk-4.0"
+
+  for css in "$HOME/.config/gtk-3.0/gtk.css" "$HOME/.config/gtk-4.0/gtk.css"; do
+    if ! grep -q 'context-menu padding' "$css" 2>/dev/null; then
+      cat >> "$css" <<'EOF'
+
+/* tighter context menus — less macOS-like padding */
+.context-menu { padding: 4px 0; }
+.context-menu menuitem,
+menuitem {
+  padding: 2px 8px;
+  min-height: 24px;
+}
+EOF
+    fi
+  done
+
+  success "GTK context menu padding reduced."
 }
 
 # ─── 3. VENTURA WALLPAPERS ────────────────────────────────────────────────────
@@ -290,6 +358,10 @@ echo
 configure_panel
 echo
 configure_keybindings
+echo
+configure_scroll_speed
+echo
+configure_gtk
 echo
 
 echo -e "${GRN}${BLD}All done!${RST}"
