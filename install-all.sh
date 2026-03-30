@@ -156,13 +156,14 @@ install_gtk_theme() {
 #   1007 – window-is-ready-notification-remover
 #   7048 – rounded-window-corners-reborn
 #   5489 – search-light            (macOS Spotlight-like Ctrl+Space search)
+#   8834 – copyous                 (clipboard manager)
 install_extensions() {
   info "Installing gnome-extensions-cli via uv..."
   uv tool install gnome-extensions-cli --force
   export PATH="$HOME/.local/bin:$PATH"
 
   info "Installing recommended GNOME Shell extensions..."
-  gext install 19 307 3193 3843 4412 1007 7048 5489
+  gext install 19 307 3193 3843 4412 1007 7048 5489 8834
 
   # gext doesn't run glib-compile-schemas; do it for every installed extension
   # that ships a schemas/ directory (blur-my-shell needs this).
@@ -178,7 +179,8 @@ install_extensions() {
     "just-perfection-desktop@just-perfection" \
     "advanced-alt-tab@G-dH.github.com" \
     "rounded-window-corners@fxgn" \
-    "search-light@icedman.github.com"; do
+    "search-light@icedman.github.com" \
+    "copyous@boerdereinar.dev"; do
     gnome-extensions enable "$ext_uuid" 2>/dev/null && info "Enabled $ext_uuid" || true
   done
 
@@ -308,6 +310,41 @@ EOF
   success "GTK context menu padding reduced."
 }
 
+# ─── 7. RCLONE GOOGLE DRIVE ───────────────────────────────────────────────────
+setup_rclone() {
+  info "Setting up rclone for Google Drive (real filenames via FUSE)..."
+  sudo pacman -S --noconfirm rclone fuse3
+  mkdir -p "$HOME/gdrive"
+  mkdir -p "$HOME/.config/systemd/user"
+
+  cat > "$HOME/.config/systemd/user/rclone-gdrive.service" <<'EOF'
+[Unit]
+Description=rclone Google Drive mount
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+ExecStart=rclone mount gdrive: %h/gdrive \
+  --vfs-cache-mode writes \
+  --vfs-cache-max-size 512M \
+  --dir-cache-time 5m \
+  --poll-interval 1m \
+  --transfers 4 \
+  --log-level INFO
+ExecStop=/bin/fusermount3 -u %h/gdrive
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
+EOF
+
+  systemctl --user enable rclone-gdrive.service
+  warn "Run 'rclone config' to authenticate with Google Drive, then: systemctl --user start rclone-gdrive.service"
+  success "rclone service installed (auth required before first use)."
+}
+
 # ─── 3. VENTURA WALLPAPERS ────────────────────────────────────────────────────
 install_wallpapers() {
   info "Installing Ventura wallpapers (all color variants, 4k)..."
@@ -371,6 +408,8 @@ echo
 configure_scroll_speed
 echo
 configure_gtk
+echo
+setup_rclone
 echo
 
 echo -e "${GRN}${BLD}All done!${RST}"
