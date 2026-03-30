@@ -58,6 +58,13 @@ install_extensions() {
   info "Installing recommended GNOME Shell extensions..."
   gext install 19 307 3193
 
+  # gext doesn't run glib-compile-schemas; do it for every installed extension
+  # that ships a schemas/ directory (blur-my-shell needs this).
+  local ext_base="$HOME/.local/share/gnome-shell/extensions"
+  for schema_dir in "$ext_base"/*/schemas; do
+    [[ -d "$schema_dir" ]] && glib-compile-schemas "$schema_dir" 2>/dev/null || true
+  done
+
   for ext_uuid in \
     "user-themes@gnome-shell-extensions.gcampax.github.com" \
     "dash-to-dock@micxgx.gmail.com" \
