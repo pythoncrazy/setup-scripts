@@ -176,6 +176,10 @@ configure_panel() {
   # 0=desktop  1=overview
   jp startup-status         0
 
+  # Notifications appear top-right, like macOS
+  # 0=top start  1=top center  2=top end  3=bottom start  4=bottom center  5=bottom end
+  jp notification-banner-position 2
+
   # --- Items NOT present in the macOS menu bar ---
   jp panel-notification-icon false  # no notification dot in macOS menu bar
   jp power-icon              false  # no standalone power button
