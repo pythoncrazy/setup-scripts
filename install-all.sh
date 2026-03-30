@@ -296,6 +296,11 @@ EOF
     fi
   done
 
+  # Fix oversized Chrome context menus — Chrome may detect wrong scale on Wayland
+  if [[ ! -f "$HOME/.config/chrome-flags.conf" ]] || ! grep -q 'force-device-scale-factor' "$HOME/.config/chrome-flags.conf"; then
+    echo '--force-device-scale-factor=1' >> "$HOME/.config/chrome-flags.conf"
+  fi
+
   success "GTK context menu padding reduced."
 }
 
