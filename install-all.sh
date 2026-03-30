@@ -127,13 +127,14 @@ install_gtk_theme() {
 #   4412 – advanced-alt-tab     (window switcher)
 #   1007 – window-is-ready-notification-remover
 #   7048 – rounded-window-corners-reborn
+#   5489 – search-light            (macOS Spotlight-like Ctrl+Space search)
 install_extensions() {
   info "Installing gnome-extensions-cli via uv..."
   uv tool install gnome-extensions-cli --force
   export PATH="$HOME/.local/bin:$PATH"
 
   info "Installing recommended GNOME Shell extensions..."
-  gext install 19 307 3193 3843 4412 1007 7048
+  gext install 19 307 3193 3843 4412 1007 7048 5489
 
   # gext doesn't run glib-compile-schemas; do it for every installed extension
   # that ships a schemas/ directory (blur-my-shell needs this).
@@ -148,7 +149,8 @@ install_extensions() {
     "blur-my-shell@aunetx" \
     "just-perfection-desktop@just-perfection" \
     "advanced-alt-tab@G-dH.github.com" \
-    "rounded-window-corners@fxgn"; do
+    "rounded-window-corners@fxgn" \
+    "search-light@icedman.github.com"; do
     gnome-extensions enable "$ext_uuid" 2>/dev/null && info "Enabled $ext_uuid" || true
   done
 
@@ -177,6 +179,11 @@ configure_panel() {
   # Boot to desktop, not the GNOME overview  (macOS behaviour)
   # 0=desktop  1=overview
   jp startup-status         0
+
+  # OSD (volume/brightness popups) top-right, like macOS
+  # Manager applies (pref - 1) before passing to XY_POSITION, so:
+  # pref 0=default  1=top-start  2=top-center  3=top-end(right)  4=bottom-start ...
+  jp osd-position 3
 
   # Notifications appear top-right, like macOS
   # 0=top start  1=top center  2=top end  3=bottom start  4=bottom center  5=bottom end
